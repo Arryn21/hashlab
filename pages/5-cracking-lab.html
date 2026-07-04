@@ -1,0 +1,115 @@
+<title>5 · Cracking Lab — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html" class="active">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 5</span>
+    <h1>Cracking lab</h1>
+    <p class="lead">You can't "decrypt" a hash. You crack it — hash millions of guesses (adding
+      the salt if present) until one matches. hashcat and John the Ripper do the heavy lifting.</p>
+  </section>
+
+  <div class="box info"><span class="t">Legal &amp; safe note</span>
+    The terminal below <em>simulates</em> cracking for the room's known hashes so you can learn
+    the workflow without any real cracking. Only crack hashes you're authorised to (CTFs, your
+    own systems, engagements).</div>
+
+  <h2>hashcat syntax</h2>
+  <pre>hashcat -m &lt;hash_type&gt; -a &lt;attack_mode&gt; hashfile wordlist</pre>
+  <table class="data">
+    <tr><th>Part</th><th>Meaning</th></tr>
+    <tr><td><code>-m &lt;n&gt;</code></td><td>Hash type number (e.g. 0 = MD5, 1000 = NTLM, 1400 = SHA256, 3200 = bcrypt).</td></tr>
+    <tr><td><code>-a &lt;n&gt;</code></td><td>Attack mode. <code>-a 0</code> = straight (wordlist).</td></tr>
+    <tr><td>hashfile</td><td>File containing the hash(es).</td></tr>
+    <tr><td>wordlist</td><td>e.g. <code>/usr/share/wordlists/rockyou.txt</code>.</td></tr>
+  </table>
+  <p>Example: <code>hashcat -m 3200 -a 0 hash1.txt /usr/share/wordlists/rockyou.txt</code></p>
+
+  <h3>John the Ripper</h3>
+  <pre>john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt
+john --show hash.txt</pre>
+  <p>John auto-detects many formats and uses CPU by default — it works in a VM out of the box.</p>
+
+  <h2>GPU vs CPU (and VMs)</h2>
+  <ul>
+    <li>GPUs have thousands of cores → fast at most hashes. Run hashcat on your <em>host</em> for GPU speed.</li>
+    <li><strong>bcrypt</strong> is deliberately GPU-unfriendly — that's a feature, it resists cracking.</li>
+    <li>VMs usually can't reach the host GPU; expect slower speeds inside one. John on CPU is fine in a VM.</li>
+  </ul>
+
+  <h2>Guided lab — crack these four</h2>
+  <p>Files <code>hash1.txt</code>…<code>hash4.txt</code> are loaded. Identify each, pick the mode,
+     and run it. Reveal the walkthrough if stuck.</p>
+
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>File</th><th>Hash (truncated)</th><th>Type</th><th>Mode</th><th>Command</th></tr>
+    <tr><td>hash1.txt</td><td><code>$2a$06$7yoU…</code></td><td>bcrypt</td><td>3200</td><td><code>hashcat -m 3200 -a 0 hash1.txt rockyou.txt</code></td></tr>
+    <tr><td>hash2.txt</td><td><code>9eb7ee7f…</code></td><td>SHA2-256</td><td>1400</td><td><code>hashcat -m 1400 -a 0 hash2.txt rockyou.txt</code></td></tr>
+    <tr><td>hash3.txt</td><td><code>$6$GQXVvW4E…</code></td><td>sha512crypt</td><td>1800</td><td><code>hashcat -m 1800 -a 0 hash3.txt rockyou.txt</code></td></tr>
+    <tr><td>hash4.txt</td><td><code>b6b0d451…</code></td><td>MD5</td><td>0</td><td><code>hashcat -m 0 -a 0 hash4.txt rockyou.txt</code></td></tr>
+  </table>
+  </div>
+
+  <details class="quiz-hint"><summary>Show full walkthrough &amp; answers</summary>
+  <div>
+    <p><strong>hash1</strong> starts <code>$2a$</code> → bcrypt → <code>-m 3200</code> → cracks to <code>85208520</code>.</p>
+    <p><strong>hash2</strong> is 64 hex chars, no prefix, context = SHA256 → <code>-m 1400</code> → <code>halloween</code>.</p>
+    <p><strong>hash3</strong> starts <code>$6$</code> → sha512crypt → <code>-m 1800</code> → <code>spaceman</code>.</p>
+    <p><strong>hash4</strong> is 32 hex chars, from a web DB context = MD5 → <code>-m 0</code> → <code>funforyou</code>.</p>
+  </div>
+  </details>
+
+  <div id="term"></div>
+  <p class="id-note">Try: <code>cat hash1.txt</code>, then <code>hashcat -m 3200 -a 0 hash1.txt rockyou.txt</code>,
+     or <code>john hash4.txt</code>.</p>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="4-recognising.html">← Lesson 4</a>
+    <a href="6-integrity-hmac.html">Lesson 6: Integrity &amp; HMAC →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/terminal.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  Terminal.mount(document.getElementById("term"));
+  Quiz.mount(document.getElementById("quiz"), "t5", [
+    { type:"text", q:"Crack hash1 (<code>$2a$06$7yoU…</code>). What's the password?",
+      answer:["85208520"], hint:"bcrypt, -m 3200. Run it in the terminal.", explain:"bcrypt cracked → 85208520." },
+    { type:"text", q:"Crack the SHA2-256 hash2 (<code>9eb7ee7f…</code>). Password?",
+      answer:["halloween"], hint:"-m 1400.", explain:"halloween." },
+    { type:"text", q:"Crack hash3 (<code>$6$GQXVvW4E…</code>). Password?",
+      answer:["spaceman"], hint:"sha512crypt, -m 1800.", explain:"spaceman." },
+    { type:"text", q:"Crack hash4 (<code>b6b0d451bbf6fed658659a9e7e5598fe</code>). Password?",
+      answer:["funforyou"], hint:"32 hex → MD5, -m 0.", explain:"funforyou." },
+    { type:"mcq", q:"Which hashcat attack-mode flag means a straight wordlist attack?",
+      choices:["-a 3","-a 0","-m 0","-a 6"], answer:"-a 0", explain:"-a 0 = straight." }
+  ]);
+</script>

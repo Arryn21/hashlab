@@ -1,0 +1,147 @@
+<title>Mistakes &amp; Tactics — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html" class="active">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Reference</span>
+    <h1>Common mistakes &amp; problem-solving tactics</h1>
+    <p class="lead">The traps people fall into, a repeatable workflow for unknown hashes, and the
+      external tools worth bookmarking.</p>
+  </section>
+
+  <h2>Common mistakes</h2>
+  <div class="box bad"><span class="t">1. Confusing hashing, encoding, and encryption</span>
+    "Decode this MD5" makes no sense — MD5 is a one-way hash, not reversible. Base64 is not
+    encryption. Encryption needs a key. Get the category right first.</div>
+  <div class="box bad"><span class="t">2. Identifying a hash by length alone</span>
+    32 hex chars could be MD5, NTLM, or MD4. 64 could be SHA-256 or SHA3-256. Use the
+    <em>source/context</em>: web-app DB → MD5; Windows SAM → NTLM.</div>
+  <div class="box bad"><span class="t">3. Trusting automated hash-ID tools blindly</span>
+    hashID/hash-identifier are reliable on prefixed hashes (<code>$6$</code>, <code>$2b$</code>)
+    but routinely mislabel plain hex hashes. Treat their output as a hint, not truth.</div>
+  <div class="box bad"><span class="t">4. Forgetting the salt</span>
+    Salted hashes (<code>$6$…</code>, bcrypt) can't be cracked with a plain rainbow table. hashcat
+    needs the whole <code>$prefix$salt$hash</code> string, not just the hash portion.</div>
+  <div class="box bad"><span class="t">5. Using MD5/SHA1 (or fast hashes) for passwords</span>
+    They're fast and broken. Passwords need slow, salted KDFs: Argon2, scrypt, bcrypt, PBKDF2.</div>
+  <div class="box bad"><span class="t">6. Wrong hashcat mode / wrong pass-vs-salt variant</span>
+    <code>md5($pass.$salt)</code> (10) ≠ <code>md5($salt.$pass)</code> (20). HMAC-SHA512 key=$pass
+    (1750) ≠ key=$salt (1720). Read the mode name exactly.</div>
+  <div class="box bad"><span class="t">7. Cracking in a VM and expecting GPU speed</span>
+    VMs usually can't touch the host GPU. Run hashcat on the host; John on CPU is fine in a VM.</div>
+
+  <h2>Tactics: cracking an unknown hash</h2>
+  <div class="box good"><span class="t">Repeatable workflow</span>
+    <ol style="margin:6px 0 0 0">
+      <li><strong>Prefix?</strong> <code>$…$</code> → look it up (reliable). Done identifying.</li>
+      <li><strong>No prefix?</strong> Count hex length → shortlist candidates.</li>
+      <li><strong>Context decides.</strong> Where did it come from? App DB, SAM, shadow, network capture?</li>
+      <li><strong>Pick the hashcat mode</strong> (or let John auto-detect).</li>
+      <li><strong>Straight attack first:</strong> <code>-a 0</code> with <code>rockyou.txt</code>.</li>
+      <li><strong>Still nothing?</strong> Add rules (<code>-r best64.rule</code>), then masks (<code>-a 3</code>), then bigger wordlists.</li>
+      <li><strong>Salted &amp; slow (bcrypt/$6$)?</strong> Expect it to be slow — keep the wordlist tight.</li>
+    </ol></div>
+
+  <h2>Quick reference</h2>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>Clue</th><th>Likely type</th><th>hashcat -m</th></tr>
+    <tr><td>32 hex, web app</td><td>MD5</td><td>0</td></tr>
+    <tr><td>32 hex, Windows SAM</td><td>NTLM</td><td>1000</td></tr>
+    <tr><td>40 hex</td><td>SHA1</td><td>100</td></tr>
+    <tr><td>64 hex</td><td>SHA-256</td><td>1400</td></tr>
+    <tr><td>128 hex</td><td>SHA-512</td><td>1700</td></tr>
+    <tr><td><code>$1$</code></td><td>md5crypt</td><td>500</td></tr>
+    <tr><td><code>$5$</code></td><td>sha256crypt</td><td>7400</td></tr>
+    <tr><td><code>$6$</code></td><td>sha512crypt</td><td>1800</td></tr>
+    <tr><td><code>$2a$/$2b$/$2y$</code></td><td>bcrypt</td><td>3200</td></tr>
+    <tr><td><code>$y$</code></td><td>yescrypt</td><td>(unix crypt)</td></tr>
+    <tr><td>Cisco-ASA MD5</td><td>—</td><td>2410</td></tr>
+    <tr><td>Cisco-IOS <code>$9$</code></td><td>scrypt</td><td>9300</td></tr>
+  </table>
+  </div>
+
+  <h2>Interactive helpers</h2>
+  <h3>Hash identifier</h3>
+  <div class="tool" id="ident"></div>
+  <h3>hashcat mode search</h3>
+  <div class="tool" id="modes"></div>
+  <h3>Scratch terminal</h3>
+  <div id="term"></div>
+
+  <h2>External tools &amp; references</h2>
+  <ul class="linklist">
+    <li><a href="https://crackstation.net/" target="_blank" rel="noopener">CrackStation ↗</a>
+        <span class="d">Free rainbow-table lookup for unsalted MD5/SHA1/NTLM.</span></li>
+    <li><a href="https://hashes.com/en/decrypt/hash" target="_blank" rel="noopener">Hashes.com ↗</a>
+        <span class="d">Online lookup + hash identifier.</span></li>
+    <li><a href="https://hashcat.net/wiki/doku.php?id=example_hashes" target="_blank" rel="noopener">Hashcat example hashes ↗</a>
+        <span class="d">Authoritative mode-number ↔ hash-format table.</span></li>
+    <li><a href="https://github.com/openwall/john" target="_blank" rel="noopener">John the Ripper ↗</a>
+        <span class="d">CPU cracker, great auto-detection, works in VMs.</span></li>
+    <li><a href="https://shattered.io/" target="_blank" rel="noopener">Shattered ↗</a>
+        <span class="d">The SHA1 collision attack.</span></li>
+    <li><a href="https://github.com/danielmiessler/SecLists" target="_blank" rel="noopener">SecLists ↗</a>
+        <span class="d">Wordlists beyond rockyou.txt.</span></li>
+    <li><code>man 5 crypt</code> · <code>man 5 shadow</code>
+        <span class="d">Local docs for Unix hash prefixes and the shadow file format.</span></li>
+  </ul>
+
+  <h2>Final check</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="7-encoding.html">← Lesson 7</a>
+    <a href="../index.html">Home →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/terminal.js"></script>
+<script src="../js/tools.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  Tools.identifier(document.getElementById("ident"));
+  Tools.modeLookup(document.getElementById("modes"));
+  Terminal.mount(document.getElementById("term"));
+  Quiz.mount(document.getElementById("quiz"), "tmix", [
+    { type:"mcq", q:"A hash is <code>$2b$12$...</code>. First move?",
+      choices:["Guess it's MD5 by length","Recognise bcrypt from the prefix → -m 3200","Base64-decode it","Run a rainbow table"],
+      answer:"Recognise bcrypt from the prefix → -m 3200", explain:"Prefix beats length; bcrypt = 3200." },
+    { type:"text", q:"What hashcat mode cracks a Cisco-ASA MD5 hash?",
+      answer:["2410"], hint:"See the quick reference table.", explain:"-m 2410." },
+    { type:"text", q:"Cisco-IOS hashes starting with <code>$9$</code> use which algorithm?",
+      answer:["scrypt"], hint:"Type 9.", explain:"scrypt (hashcat -m 9300)." },
+    { type:"mcq", q:"Best fix for storing user passwords?",
+      choices:["SHA-256 unsalted","MD5 with a salt","bcrypt/Argon2/scrypt with per-user salt","Base64"],
+      answer:"bcrypt/Argon2/scrypt with per-user salt", explain:"Slow, salted KDFs." },
+    { type:"mcq", q:"Automated hash-ID says a 32-hex hash is 'MD5', but it came from a Windows SAM dump. Trust it?",
+      choices:["Yes, tools are always right","No — context says NTLM (also 32 hex)","Only if it ends in ==","Re-run the tool"],
+      answer:"No — context says NTLM (also 32 hex)", explain:"Context overrides length-based guesses." },
+    { type:"mcq", q:"Your straight rockyou attack fails on a fast hash. Reasonable next step?",
+      choices:["Give up","Apply rules or a mask attack, or a larger wordlist","Switch to Base64","Encrypt the hash"],
+      answer:"Apply rules or a mask attack, or a larger wordlist", explain:"Escalate: rules → masks → bigger lists." }
+  ]);
+</script>

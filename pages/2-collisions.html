@@ -1,0 +1,120 @@
+<title>2 · Hash Collisions — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html" class="active">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 2</span>
+    <h1>Hash collisions</h1>
+    <p class="lead">A collision is when two <em>different</em> inputs produce the <em>same</em>
+      output. Good hash functions make this astronomically unlikely — bad ones don't.</p>
+  </section>
+
+  <h2>Why collisions must exist: the pigeonhole principle</h2>
+  <p>Inputs are unlimited in size, but outputs are a fixed number of bits. More pigeons than
+     pigeonholes means some hole holds two pigeons. With <code>n</code> bits of output there are
+     only <code>2ⁿ</code> possible digests:</p>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>Output bits</th><th>Possible values (2ⁿ)</th></tr>
+    <tr><td>4</td><td>16</td></tr>
+    <tr><td>8</td><td>256</td></tr>
+    <tr><td>16</td><td>65,536</td></tr>
+    <tr><td>128 (MD5)</td><td>≈ 3.4 × 10³⁸</td></tr>
+  </table>
+  </div>
+  <p>So collisions are <em>unavoidable</em> in theory. A <strong>good</strong> hash function just
+     makes the probability negligible <em>and</em> makes it infeasible to engineer one on purpose.</p>
+
+  <div class="box bad">
+    <span class="t">MD5 and SHA1 are broken</span>
+    Researchers can now <em>engineer</em> collisions in both. MD5 collisions are trivial today;
+    SHA1 fell to the <strong>Shattered</strong> attack (2017). Do not use either to hash passwords
+    or verify integrity against a motivated attacker.
+  </div>
+  <div class="pill-row">
+    <a class="pill" href="https://shattered.io/" target="_blank" rel="noopener">Shattered (SHA1) ↗</a>
+    <a class="pill" href="https://www.mscs.dal.ca/~selinger/md5collision/" target="_blank" rel="noopener">MD5 collision demo ↗</a>
+  </div>
+
+  <h2>Collision vs. reversing — don't mix them up</h2>
+  <table class="data">
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>Collision</td><td>Find <em>any</em> two inputs with the same hash.</td></tr>
+    <tr><td>Second-preimage</td><td>Given one input, find a <em>different</em> input with the same hash.</td></tr>
+    <tr><td>Preimage</td><td>Given only a hash, find <em>an</em> input that produces it (this is "reversing").</td></tr>
+  </table>
+
+  <h2>Feel it: 4-bit toy hash</h2>
+  <p>Below, a real SHA-256 is truncated to its first hex digit (4 bits → 16 buckets). Type
+     different words and you'll hit the same bucket fast — that's a collision in a tiny space.</p>
+  <div class="tool" id="toy"></div>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="1-hash-functions.html">← Lesson 1</a>
+    <a href="3-password-storage.html">Lesson 3: Storing passwords →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  // toy 4-bit hash demo
+  (function(){
+    var el=document.getElementById("toy");
+    el.innerHTML="<label class='tool-label'>Type a word — its full SHA-256 and its 4-bit bucket "+
+      "(first hex digit → 0–15). Try to make two words share a bucket.</label>"+
+      "<input id='toy-in' class='tool-input' value='cat' autocomplete='off'>"+
+      "<div id='toy-out' class='tool-out'></div>";
+    var input=el.querySelector("#toy-in"), out=el.querySelector("#toy-out");
+    var seen={};
+    function up(){
+      var v=input.value; if(!v){out.innerHTML="";return;}
+      var full=hashlib.sha256(v); var bucket=parseInt(full[0],16);
+      out.innerHTML="<table class='tool-table'><tr><th>full sha256</th><td style='font-family:var(--mono);word-break:break-all;color:var(--accent)'>"+
+        full+"</td></tr><tr><th>4-bit bucket</th><td><strong>"+bucket+"</strong> / 16</td></tr></table>";
+    }
+    input.addEventListener("input",up); up();
+  })();
+
+  Quiz.mount(document.getElementById("quiz"), "t2", [
+    { type:"text", q:"If you have an 8-bit hash output, how many possible hash values are there?",
+      answer:["256","2^8","2**8"], hint:"2 to the power of the bit count.", explain:"2⁸ = 256." },
+    { type:"mcq", q:"Why are collisions ultimately unavoidable for any hash function?",
+      choices:["Computers are slow","Unlimited inputs map to a fixed number of outputs (pigeonhole)","Salts remove them","Only for MD5"],
+      answer:"Unlimited inputs map to a fixed number of outputs (pigeonhole)",
+      explain:"Pigeonhole principle." },
+    { type:"mcq", q:"Which statement is TRUE today?",
+      choices:["MD5 and SHA1 are collision-resistant","MD5 and SHA1 have practical collision attacks","SHA256 is broken","Collisions are impossible"],
+      answer:"MD5 and SHA1 have practical collision attacks",
+      explain:"MD5 trivially, SHA1 via Shattered." },
+    { type:"text", q:"What is the name of the 2017 SHA1 collision attack? (one word)",
+      answer:["shattered"], hint:"shattered.io", explain:"Shattered produced two PDFs with the same SHA1." },
+    { type:"mcq", q:"A 4-bit hash has how many possible outputs?",
+      choices:["4","8","16","256"], answer:"16", explain:"2⁴ = 16 — collisions are almost guaranteed." }
+  ]);
+</script>

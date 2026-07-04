@@ -1,0 +1,121 @@
+<title>Hashing Basics — Interactive Lab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Learn hashing hands-on: real in-browser hashing, a simulated cracking terminal, practice quizzes, and cracking labs.">
+<link rel="stylesheet" href="css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand">#<span>hashlab</span></div>
+    <nav>
+      <a href="index.html" class="active">Home</a>
+      <a href="pages/1-hash-functions.html">1 · Hashes</a>
+      <a href="pages/2-collisions.html">2 · Collisions</a>
+      <a href="pages/3-password-storage.html">3 · Storage</a>
+      <a href="pages/4-recognising.html">4 · Recognise</a>
+      <a href="pages/5-cracking-lab.html">5 · Cracking</a>
+      <a href="pages/6-integrity-hmac.html">6 · Integrity</a>
+      <a href="pages/7-encoding.html">7 · Encoding</a>
+      <a href="pages/mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Interactive · runs fully in your browser</span>
+    <h1>Hashing Basics — the hands-on version</h1>
+    <p class="lead">Every concept from the TryHackMe Hashing Basics room, re-explained simply,
+      plus a real hashing terminal, live tools, cracking labs, and lots of practice questions.
+      Nothing is faked except the crackers — all hashes are computed for real in your browser.</p>
+    <div class="pill-row">
+      <span class="pill">No install</span>
+      <span class="pill">No server</span>
+      <span class="pill">Real MD5 / SHA / HMAC / NTLM</span>
+      <span class="pill">Simulated hashcat &amp; john</span>
+      <span class="pill">Progress saved locally</span>
+    </div>
+  </section>
+
+  <div class="box info">
+    <span class="t">Your progress</span>
+    <div id="overall"></div>
+  </div>
+
+  <h2 style="border:none">Start here</h2>
+  <div class="cards">
+    <a class="card" href="pages/1-hash-functions.html">
+      <span class="num">01</span><h3>What is a hash function?</h3>
+      <p>One-way digests, fixed size, the avalanche effect. Play with a live generator.</p>
+      <span class="mini" data-prog="t1"></span>
+    </a>
+    <a class="card" href="pages/2-collisions.html">
+      <span class="num">02</span><h3>Hash collisions</h3>
+      <p>Pigeonhole principle, why MD5 &amp; SHA1 are broken, Shattered.</p>
+      <span class="mini" data-prog="t2"></span>
+    </a>
+    <a class="card" href="pages/3-password-storage.html">
+      <span class="num">03</span><h3>Storing passwords</h3>
+      <p>Breaches, salting, rainbow tables, and how to do it right.</p>
+      <span class="mini" data-prog="t3"></span>
+    </a>
+    <a class="card" href="pages/4-recognising.html">
+      <span class="num">04</span><h3>Recognising hashes</h3>
+      <p>Linux <code>$prefix</code> formats, <code>/etc/shadow</code>, Windows NTLM.</p>
+      <span class="mini" data-prog="t4"></span>
+    </a>
+    <a class="card" href="pages/5-cracking-lab.html">
+      <span class="num">05</span><h3>Cracking lab</h3>
+      <p>hashcat &amp; john syntax with guided, hands-on walkthroughs.</p>
+      <span class="mini" data-prog="t5"></span>
+    </a>
+    <a class="card" href="pages/6-integrity-hmac.html">
+      <span class="num">06</span><h3>Integrity &amp; HMAC</h3>
+      <p>Checksums for file integrity and keyed authentication codes.</p>
+      <span class="mini" data-prog="t6"></span>
+    </a>
+    <a class="card" href="pages/7-encoding.html">
+      <span class="num">07</span><h3>Hash vs encode vs encrypt</h3>
+      <p>The three get confused constantly. Base64 demo included.</p>
+      <span class="mini" data-prog="t7"></span>
+    </a>
+    <a class="card" href="pages/mistakes-tactics.html">
+      <span class="num">★</span><h3>Mistakes &amp; tactics</h3>
+      <p>Common traps, a problem-solving cheatsheet, and external tools.</p>
+      <span class="mini" data-prog="tmix"></span>
+    </a>
+  </div>
+
+  <h2>Try the terminal right now</h2>
+  <p>This is a real shell for hashing. Try <code>sha256sum file1.txt</code>,
+     <code>base64 -d RU5jb2RlREVjb2RlCg==</code>, or <code>help</code>.</p>
+  <div id="term"></div>
+
+  <div class="pagenav">
+    <span></span>
+    <a href="pages/1-hash-functions.html">Start lesson 1 →</a>
+  </div>
+</div>
+
+<footer class="site">
+  Built for learning · all crypto runs client-side · cracking is simulated for safety.
+</footer>
+
+<script src="vendor/crypto-js.min.js"></script>
+<script src="js/hashlib.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/quiz.js"></script>
+<script>
+  Terminal.mount(document.getElementById("term"));
+  // aggregate progress across topics
+  var TOPICS = [["t1",6],["t2",5],["t3",6],["t4",6],["t5",5],["t6",5],["t7",5],["tmix",6]];
+  var got=0,total=0;
+  TOPICS.forEach(function(t){ var p=Quiz.progress(t[0],t[1]); got+=p.got; total+=t[1];
+    var el=document.querySelector("[data-prog='"+t[0]+"']");
+    if(el) el.textContent = p.got+" / "+t[1]+" questions done";
+  });
+  var pct = total? Math.round(100*got/total):0;
+  document.getElementById("overall").innerHTML =
+    "<div class='quiz-score-text'>"+got+" / "+total+" practice questions answered correctly ("+pct+"%)</div>"+
+    "<div class='quiz-bar'><span style='width:"+pct+"%'></span></div>";
+</script>

@@ -1,0 +1,126 @@
+<title>4 · Recognising Hashes — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html" class="active">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 4</span>
+    <h1>Recognising a hash</h1>
+    <p class="lead">Before you can crack a hash you need its type. Prefixes are reliable; raw
+      hex length is a guess. Automated tools mix things up — context wins.</p>
+  </section>
+
+  <h2>Prefixes: the reliable signal</h2>
+  <p>Unix/Linux password hashes in <code>/etc/shadow</code> use the format
+     <code>$prefix$options$salt$hash</code>. The prefix names the algorithm:</p>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>Prefix</th><th>Algorithm</th><th>Strength</th></tr>
+    <tr><td><code>$y$</code></td><td>yescrypt</td><td>Modern default, strong</td></tr>
+    <tr><td><code>$gy$</code></td><td>gost-yescrypt</td><td>Strong</td></tr>
+    <tr><td><code>$7$</code></td><td>scrypt</td><td>Strong</td></tr>
+    <tr><td><code>$2b$ $2y$ $2a$ $2x$</code></td><td>bcrypt</td><td>Strong</td></tr>
+    <tr><td><code>$6$</code></td><td>sha512crypt</td><td>OK (older Linux)</td></tr>
+    <tr><td><code>$md5</code></td><td>SunMD5</td><td>Weak</td></tr>
+    <tr><td><code>$1$</code></td><td>md5crypt</td><td>Weak</td></tr>
+  </table>
+  </div>
+
+  <h3>Reading a shadow line</h3>
+  <pre>strategos:$y$j9T$76UzfgEM5PnymhQ7TlJey1$/OOSg64dhfF.TigVPdzqiFang6uZA4QA1pzzegKdVm4:19965:...
+           │   │   └ salt                └ hash
+           │   └ options (parameter)
+           └ $y$ = yescrypt</pre>
+  <div class="box info"><span class="t">yescrypt hash size</span>
+    yescrypt's hash portion is <strong>256</strong> bits. The prefix <code>$y$</code> is your
+    dead giveaway.</div>
+
+  <h2>Windows: NTLM looks just like MD4/MD5</h2>
+  <p>Windows stores password hashes in the <strong>SAM</strong> using <strong>NTLM</strong>
+     (a variant of MD4). NTLM is 32 hex chars — visually identical to MD5 and MD4. Only
+     <em>context</em> tells them apart (a Windows SAM dump → NTLM; a web-app DB → probably MD5).</p>
+  <h3>Compute a real NTLM hash</h3>
+  <div class="tool" id="ntlm"></div>
+
+  <h2>Length-based guessing (ambiguous!)</h2>
+  <p>Paste any hash below. Prefix match = confident. Length-only match = a list of candidates you
+     must disambiguate with context.</p>
+  <div class="tool" id="ident"></div>
+
+  <h2>hashcat mode reference</h2>
+  <p>When you crack (next lesson) you pass <code>-m &lt;mode&gt;</code>. Search the modes:</p>
+  <div class="tool" id="modes"></div>
+  <p class="pill-row">
+    <a class="pill" href="https://hashcat.net/wiki/doku.php?id=example_hashes" target="_blank" rel="noopener">Hashcat example hashes ↗</a>
+  </p>
+
+  <div class="box warn"><span class="t">Don't blindly trust hash-ID tools</span>
+    Tools like hashID are reliable for prefixed hashes but frequently confuse same-length hex
+    hashes (MD5 vs NTLM vs MD4). Combine tool output with where the hash came from.</div>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="3-password-storage.html">← Lesson 3</a>
+    <a href="5-cracking-lab.html">Lesson 5: Cracking lab →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/tools.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  (function(){
+    var el=document.getElementById("ntlm");
+    el.innerHTML="<label class='tool-label'>Type a password → its real NTLM hash (MD4 of the "+
+      "UTF-16LE password). Notice it's 32 hex chars, just like MD5.</label>"+
+      "<input id='nt-in' class='tool-input' value='password' autocomplete='off'>"+
+      "<table class='tool-table'><tr><th>NTLM</th><td id='nt-out' style='font-family:var(--mono);word-break:break-all;color:var(--accent)'></td></tr>"+
+      "<tr><th>MD5 (compare)</th><td id='nt-md5' style='font-family:var(--mono);word-break:break-all;color:var(--muted)'></td></tr></table>";
+    var input=el.querySelector("#nt-in");
+    function up(){ el.querySelector("#nt-out").textContent=hashlib.ntlm(input.value);
+      el.querySelector("#nt-md5").textContent=hashlib.md5(input.value); }
+    input.addEventListener("input",up); up();
+  })();
+  Tools.identifier(document.getElementById("ident"));
+  Tools.modeLookup(document.getElementById("modes"));
+
+  Quiz.mount(document.getElementById("quiz"), "t4", [
+    { type:"text", q:"What is the hash size (in bits) used by yescrypt?",
+      answer:["256"], hint:"Same as SHA-256's output.", explain:"yescrypt hash portion is 256 bits." },
+    { type:"mcq", q:"A hash begins with <code>$6$</code>. Which algorithm?",
+      choices:["bcrypt","sha512crypt","yescrypt","md5crypt"], answer:"sha512crypt",
+      explain:"$6$ = sha512crypt." },
+    { type:"text", q:"A 32-char hex hash pulled from a Windows SAM dump is most likely which algorithm?",
+      answer:["ntlm","nt"], hint:"Windows, MD4 variant.", explain:"NTLM — same length as MD5, context decides." },
+    { type:"mcq", q:"Which prefix is bcrypt?",
+      choices:["$1$","$6$","$2b$","$y$"], answer:"$2b$", explain:"$2a/$2b/$2x/$2y = bcrypt." },
+    { type:"text", q:"What hashcat mode number is NTLM?",
+      answer:["1000"], hint:"Use the lookup above.", explain:"-m 1000 = NTLM." },
+    { type:"mcq", q:"Why can't length alone identify a 32-hex-char hash?",
+      choices:["It always can","MD5, NTLM, and MD4 are all 32 hex chars","Hex is unreliable","Length changes each run"],
+      answer:"MD5, NTLM, and MD4 are all 32 hex chars", explain:"Use context, not just length." }
+  ]);
+</script>

@@ -1,0 +1,119 @@
+<title>1 · What is a Hash Function? — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html" class="active">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 1</span>
+    <h1>What is a hash function?</h1>
+    <p class="lead">A hash function eats any amount of data and spits out a short, fixed-size
+      fingerprint. It only goes one way.</p>
+  </section>
+
+  <h2>The plain-English version</h2>
+  <p>A <strong>hash function</strong> takes input of <em>any</em> size and produces a
+     fixed-size <strong>digest</strong> (the output). Four properties matter:</p>
+  <ul>
+    <li><strong>Fixed output size.</strong> "T" and a 4&nbsp;GB movie both hash to the same length.</li>
+    <li><strong>Deterministic.</strong> Same input → same output, every single time.</li>
+    <li><strong>One-way.</strong> Easy to compute forward, impractical to reverse. There is
+        <em>no key</em> — this is the big difference from encryption.</li>
+    <li><strong>Avalanche effect.</strong> Change one bit of input → the whole output changes.</li>
+  </ul>
+
+  <div class="box info">
+    <span class="t">Hashing ≠ encryption</span>
+    Encryption is reversible <em>with a key</em>. Hashing has no key and is not meant to be
+    reversed at all. If someone says "decrypt this hash", they mean <em>crack</em> it (Lesson 5).
+  </div>
+
+  <h2>See the avalanche effect</h2>
+  <p>The letters <code>T</code> (hex <code>54</code>, binary <code>01010100</code>) and
+     <code>U</code> (hex <code>55</code>, binary <code>01010101</code>) differ by a single bit.
+     Type into the box — flip that one character and watch every digest change completely.</p>
+  <div class="tool" id="hg"></div>
+
+  <h2>Output sizes &amp; encoding</h2>
+  <p>Raw hash output is bytes, usually printed as <strong>hexadecimal</strong> (2 hex chars per
+     byte). That's why lengths are predictable:</p>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>Algorithm</th><th>Output bits</th><th>Output bytes</th><th>Hex length</th></tr>
+    <tr><td>MD5</td><td>128</td><td>16</td><td>32</td></tr>
+    <tr><td>SHA1</td><td>160</td><td>20</td><td>40</td></tr>
+    <tr><td>SHA-256</td><td>256</td><td>32</td><td>64</td></tr>
+    <tr><td>SHA-512</td><td>512</td><td>64</td><td>128</td></tr>
+  </table>
+  </div>
+  <div class="box info"><span class="t">Handy math</span>
+    bytes = bits ÷ 8. Hex length = bytes × 2. So MD5 = 128 ÷ 8 = <strong>16 bytes</strong> = 32 hex chars.</div>
+
+  <h2>Prove it in the terminal</h2>
+  <p>Files <code>file1.txt</code> (contains <code>T</code>) and <code>file2.txt</code>
+     (contains <code>U</code>) are loaded. Try these:</p>
+  <pre>hexdump -C file1.txt
+md5sum file1.txt
+md5sum file2.txt
+sha256sum file1.txt</pre>
+  <div id="term"></div>
+  <div class="box good"><span class="t">What you should notice</span>
+    A one-bit input change produces totally different MD5, SHA1, and SHA256 outputs — yet the
+    same input always gives the same hash.</div>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="../index.html">← Home</a>
+    <a href="2-collisions.html">Lesson 2: Collisions →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/terminal.js"></script>
+<script src="../js/tools.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  Tools.hashGen(document.getElementById("hg"));
+  Terminal.mount(document.getElementById("term"));
+  Quiz.mount(document.getElementById("quiz"), "t1", [
+    { type:"text", q:"What is the output size, in <em>bytes</em>, of the MD5 hash function?",
+      answer:["16","16 bytes"], hint:"128 bits ÷ 8.", explain:"MD5 = 128 bits = 16 bytes = 32 hex chars." },
+    { type:"text", q:"What is the SHA256 hash of a file containing just the letter <code>T</code>? (run <code>sha256sum file1.txt</code>)",
+      answer:"e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3",
+      hint:"Use the terminal above.", explain:"Deterministic — same input always gives this digest." },
+    { type:"mcq", q:"What makes hashing different from encryption?",
+      choices:["Hashing is faster","Hashing uses no key and is one-way","Hashing always outputs base64","Encryption can't be reversed"],
+      answer:"Hashing uses no key and is one-way",
+      explain:"No key, not designed to be reversed." },
+    { type:"mcq", q:"Changing a single input bit should change…",
+      choices:["Nothing","Only the first byte of output","A large, unpredictable part of the output","The output length"],
+      answer:"A large, unpredictable part of the output", explain:"That's the avalanche effect." },
+    { type:"text", q:"How many hex characters long is a SHA-256 digest?",
+      answer:["64"], hint:"32 bytes × 2.", explain:"256 bits = 32 bytes = 64 hex chars." },
+    { type:"mcq", q:"Two identical files are hashed with SHA-256. The two digests will be…",
+      choices:["Different (random each run)","Identical","Different lengths","Impossible to compute"],
+      answer:"Identical", explain:"Hashing is deterministic." }
+  ]);
+</script>

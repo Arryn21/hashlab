@@ -1,0 +1,116 @@
+<title>7 · Hash vs Encode vs Encrypt — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html" class="active">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 7</span>
+    <h1>Hashing vs encoding vs encryption</h1>
+    <p class="lead">These three get confused constantly. The one-line test: hashing is one-way,
+      encoding needs no key, encryption needs a key.</p>
+  </section>
+
+  <h2>The three, side by side</h2>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th></th><th>Hashing</th><th>Encoding</th><th>Encryption</th></tr>
+    <tr><td>Reversible?</td><td><strong style="color:var(--bad)">No</strong></td><td><strong style="color:var(--good)">Yes</strong></td><td><strong style="color:var(--good)">Yes</strong></td></tr>
+    <tr><td>Needs a key?</td><td>No</td><td>No</td><td><strong>Yes</strong></td></tr>
+    <tr><td>Purpose</td><td>Fingerprint / integrity / password storage</td><td>Compatibility / safe transport</td><td>Confidentiality</td></tr>
+    <tr><td>Examples</td><td>MD5, SHA-256, bcrypt</td><td>ASCII, UTF-8, Base64, Base32</td><td>AES, RSA</td></tr>
+    <tr><td>Output size</td><td>Fixed</td><td>Varies with input</td><td>Varies with input</td></tr>
+  </table>
+  </div>
+  <div class="box warn"><span class="t">Base64 is NOT encryption</span>
+    Base64 hides nothing — anyone can decode it with no key. If you see <code>==</code> at the end
+    of a string, think Base64, not "encrypted".</div>
+
+  <h2>Encoding is for compatibility, not secrecy</h2>
+  <p>Encodings represent data in a form a system can handle. <strong>Character encodings</strong>
+     (ASCII, UTF-8/16/32) map characters to bytes — UTF-8/16/32 can represent any language.
+     <strong>Binary-to-text encodings</strong> (Base64, Base32) pack arbitrary bytes into safe
+     printable characters for transport in email, URLs, JSON, etc.</p>
+
+  <h3>Base64 playground</h3>
+  <p>Encode and decode live. Try decoding <code>RU5jb2RlREVjb2RlCg==</code>.</p>
+  <div class="tool" id="b64"></div>
+
+  <h3>Or use the terminal</h3>
+  <pre>base64 TryHackMe
+base64 -d RU5jb2RlREVjb2RlCg==
+cat decode-this.txt</pre>
+  <div id="term"></div>
+
+  <h2>The mental model</h2>
+  <ul>
+    <li><strong>Hashing</strong> — "prove it's the same / prove you know it" — no going back.</li>
+    <li><strong>Encoding</strong> — "make it fit / travel safely" — reverse freely, no key.</li>
+    <li><strong>Encryption</strong> — "keep it secret" — reverse only with the key.</li>
+  </ul>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="6-integrity-hmac.html">← Lesson 6</a>
+    <a href="mistakes-tactics.html">Cheatsheet &amp; tactics →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/terminal.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  (function(){
+    var el=document.getElementById("b64");
+    el.innerHTML="<label class='tool-label'>Type text to encode, or paste Base64 to decode. "+
+      "Both directions update live.</label>"+
+      "<input id='b-plain' class='tool-input' value='TryHackMe' placeholder='plaintext' autocomplete='off' style='margin-bottom:8px'>"+
+      "<div class='id-note' style='margin:2px 0'>↕ encodes to / decodes from ↕</div>"+
+      "<input id='b-enc' class='tool-input' placeholder='base64' autocomplete='off'>";
+    var plain=el.querySelector("#b-plain"), enc=el.querySelector("#b-enc");
+    plain.addEventListener("input",function(){ enc.value=hashlib.b64encode(plain.value); });
+    enc.addEventListener("input",function(){ var d=hashlib.b64decode(enc.value);
+      plain.value = d===null? "(invalid base64)" : d; });
+    enc.value=hashlib.b64encode(plain.value);
+  })();
+  Terminal.mount(document.getElementById("term"));
+
+  Quiz.mount(document.getElementById("quiz"), "t7", [
+    { type:"text", q:"Use base64 to decode <code>RU5jb2RlREVjb2RlCg==</code>. What is the original word?",
+      answer:["ENcodeDEcode","encodedecode"], hint:"Use the playground or terminal.", explain:"ENcodeDEcode." },
+    { type:"mcq", q:"Which of these is reversible WITHOUT any key?",
+      choices:["SHA-256 hashing","Base64 encoding","AES encryption","bcrypt"], answer:"Base64 encoding",
+      explain:"Encoding needs no key; hashing isn't reversible; encryption needs a key." },
+    { type:"mcq", q:"You find a config value ending in <code>==</code>. Best first guess?",
+      choices:["It's AES-encrypted","It's Base64-encoded","It's a SHA1 hash","It's a salt"],
+      answer:"It's Base64-encoded", explain:"== padding is a Base64 tell." },
+    { type:"mcq", q:"Which property is UNIQUE to encryption among the three?",
+      choices:["Fixed output size","One-way","Requires a key to reverse","Uses hex"],
+      answer:"Requires a key to reverse", explain:"Only encryption uses a key." },
+    { type:"mcq", q:"UTF-8, UTF-16, UTF-32 are examples of…",
+      choices:["Hash functions","Character encodings","Encryption ciphers","Salts"],
+      answer:"Character encodings", explain:"They map characters to bytes." }
+  ]);
+</script>

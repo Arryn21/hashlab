@@ -1,0 +1,128 @@
+<title>6 · Integrity &amp; HMAC — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html" class="active">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 6</span>
+    <h1>Integrity checking &amp; HMAC</h1>
+    <p class="lead">Same input → same hash. So a hash is a fingerprint you can use to prove a file
+      hasn't changed. Add a secret key and you also prove <em>who</em> made it.</p>
+  </section>
+
+  <h2>File integrity</h2>
+  <p>Download an ISO, hash it, compare to the published hash. Match = your copy is byte-identical
+     to the official one. One flipped bit → a completely different hash (avalanche again).</p>
+  <pre>$ sha256sum Fedora-Workstation-Live-x86_64-40-1.14.iso
+dd1faca950d1a8c3d169adf2df4c3644ebb62f8aac04c401f2393e521395d613  Fedora-...iso</pre>
+  <p>Uses beyond downloads: spotting corruption, and finding duplicate files (same hash = same file).</p>
+
+  <h3>Try it — integrity check</h3>
+  <p>Type "file contents" below. If the received copy matches the expected hash, it's intact.
+     Flip one character to simulate corruption and watch it fail.</p>
+  <div class="tool" id="integ"></div>
+
+  <h2>HMAC — integrity <em>and</em> authenticity</h2>
+  <p>A plain hash proves integrity but not <em>who</em> sent it — anyone can recompute it.
+     An <strong>HMAC</strong> (Keyed-Hash Message Authentication Code) mixes in a secret key,
+     so only someone with the key can produce a valid tag. It proves both:</p>
+  <ul>
+    <li><strong>Integrity</strong> — the message wasn't modified.</li>
+    <li><strong>Authenticity</strong> — it came from someone who holds the key.</li>
+  </ul>
+  <p>The formula, where <code>K</code> = key, <code>M</code> = message, <code>H</code> = hash:</p>
+  <pre>HMAC(K,M) = H( (K ⊕ opad) || H( (K ⊕ ipad) || M ) )</pre>
+  <p>Roughly: pad the key to the block size, XOR it with two constants (ipad/opad), and hash
+     twice — inner hash over the message, outer hash over the inner result.</p>
+
+  <h3>Try it — live HMAC</h3>
+  <div class="tool" id="hmac"></div>
+
+  <div class="box info"><span class="t">hashcat &amp; HMAC</span>
+    hashcat cares whether the salt/key is the "pass" or the "salt". For
+    <strong>HMAC-SHA512 (key = $pass)</strong> the mode is <strong>1750</strong>;
+    HMAC-SHA512 (key = $salt) is 1720. Read the mode name carefully.</div>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="5-cracking-lab.html">← Lesson 5</a>
+    <a href="7-encoding.html">Lesson 7: Encoding vs encryption →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  // integrity demo
+  (function(){
+    var expected=hashlib.sha256("release-v1.0-payload");
+    var el=document.getElementById("integ");
+    el.innerHTML="<label class='tool-label'>Expected SHA-256: <code style='word-break:break-all'>"+expected+
+      "</code><br>Received file contents (starts correct — edit to corrupt):</label>"+
+      "<input id='ig-in' class='tool-input' value='release-v1.0-payload' autocomplete='off'>"+
+      "<div id='ig-out' class='tool-out'></div>";
+    var input=el.querySelector("#ig-in"), out=el.querySelector("#ig-out");
+    function up(){ var got=hashlib.sha256(input.value); var ok=got===expected;
+      out.innerHTML="<table class='tool-table'><tr><th>computed</th><td style='font-family:var(--mono);word-break:break-all'>"+got+
+        "</td></tr><tr><th>verdict</th><td><strong style='color:"+(ok?"var(--good)":"var(--bad)")+"'>"+
+        (ok?"✔ MATCH — file intact":"✗ MISMATCH — file altered/corrupted")+"</strong></td></tr></table>"; }
+    input.addEventListener("input",up); up();
+  })();
+  // hmac demo
+  (function(){
+    var el=document.getElementById("hmac");
+    el.innerHTML="<label class='tool-label'>Secret key + message → HMAC. Change the key and the "+
+      "whole tag changes; without the key you can't forge it.</label>"+
+      "<input id='hm-k' class='tool-input' value='s3cr3t-key' placeholder='key' autocomplete='off' style='margin-bottom:8px'>"+
+      "<input id='hm-m' class='tool-input' value='transfer $100 to Bob' placeholder='message' autocomplete='off'>"+
+      "<table class='tool-table'>"+
+      "<tr><th>HMAC-SHA256</th><td id='hm-256' style='font-family:var(--mono);word-break:break-all;color:var(--accent)'></td></tr>"+
+      "<tr><th>HMAC-SHA512</th><td id='hm-512' style='font-family:var(--mono);word-break:break-all;color:var(--muted)'></td></tr></table>";
+    var k=el.querySelector("#hm-k"), m=el.querySelector("#hm-m");
+    function up(){ el.querySelector("#hm-256").textContent=hashlib.hmac("sha256",k.value,m.value);
+      el.querySelector("#hm-512").textContent=hashlib.hmac("sha512",k.value,m.value); }
+    k.addEventListener("input",up); m.addEventListener("input",up); up();
+  })();
+
+  Quiz.mount(document.getElementById("quiz"), "t6", [
+    { type:"mcq", q:"Two files produce the same SHA-256 hash. What can you conclude?",
+      choices:["Nothing","They are (practically certainly) the same file","One is corrupted","They have different sizes"],
+      answer:"They are (practically certainly) the same file",
+      explain:"Same hash = same content, barring an astronomically unlikely collision." },
+    { type:"mcq", q:"What does an HMAC add over a plain hash?",
+      choices:["Speed","A secret key → proves authenticity as well as integrity","Encryption","Shorter output"],
+      answer:"A secret key → proves authenticity as well as integrity",
+      explain:"Only a key-holder can produce a valid HMAC." },
+    { type:"text", q:"What's the hashcat mode number for HMAC-SHA512 (key = $pass)?",
+      answer:["1750"], hint:"Check the mode note above.", explain:"-m 1750." },
+    { type:"mcq", q:"In HMAC(K,M) = H((K⊕opad)||H((K⊕ipad)||M)), how many times is the hash applied?",
+      choices:["Once","Twice","Three times","Depends on the key"], answer:"Twice",
+      explain:"Inner hash over the message, outer hash over the result." },
+    { type:"mcq", q:"You download a file and its SHA-256 differs from the published one. This means…",
+      choices:["The algorithm is broken","The file is corrupted or tampered with","Nothing, hashes vary","You need a key"],
+      answer:"The file is corrupted or tampered with", explain:"Any change flips the hash." }
+  ]);
+</script>
