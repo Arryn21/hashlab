@@ -1,0 +1,215 @@
+<title>8 · John the Ripper — hashlab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/style.css">
+
+<header class="site">
+  <div class="bar">
+    <div class="brand"><a href="../index.html" style="color:inherit">#<span style="color:var(--accent)">hashlab</span></a></div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="1-hash-functions.html">1 · Hashes</a>
+      <a href="2-collisions.html">2 · Collisions</a>
+      <a href="3-password-storage.html">3 · Storage</a>
+      <a href="4-recognising.html">4 · Recognise</a>
+      <a href="5-cracking-lab.html">5 · Cracking</a>
+      <a href="6-integrity-hmac.html">6 · Integrity</a>
+      <a href="7-encoding.html">7 · Encoding</a>
+      <a href="8-john-the-ripper.html" class="active">8 · John</a>
+      <a href="mistakes-tactics.html">Cheatsheet</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="tag">Lesson 8 · TryHackMe: John the Ripper — The Basics</span>
+    <h1>John the Ripper</h1>
+    <p class="lead">John (specifically <strong>Jumbo John</strong>) is a fast, versatile dictionary-attack
+      cracker. You can't reverse a hash, but you can hash millions of guesses and compare. This lesson
+      walks the whole room: raw hashes, NTLM, <code>/etc/shadow</code>, single-crack mode, custom rules,
+      and cracking Zip / RAR / SSH keys.</p>
+    <div class="pill-row">
+      <span class="pill">Jumbo John</span>
+      <span class="pill">rockyou.txt</span>
+      <span class="pill">unshadow</span>
+      <span class="pill">zip2john · rar2john · ssh2john</span>
+      <span class="pill">Simulated john below</span>
+    </div>
+  </section>
+
+  <div class="box info"><span class="t">Legal &amp; safe note</span>
+    The terminal below <em>simulates</em> John for this room's known hashes so you can learn the workflow
+    offline. Only crack hashes you're authorised to (CTFs, your own systems, engagements).</div>
+
+  <h2>Why cracking works at all</h2>
+  <p>Hashing is a one-way (<em>P</em>) operation: easy to compute, infeasible to invert (<em>NP</em>).
+    But if you know the algorithm, you can hash a huge <strong>dictionary</strong> of candidate passwords
+    and look for a match. That's a <strong>dictionary attack</strong> — John's core trick.</p>
+  <table class="data">
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>Jumbo John</td><td>The community edition with extra formats and the <code>*2john</code> tools.</td></tr>
+    <tr><td>Wordlist</td><td>List of candidate passwords. This room uses <code>rockyou.txt</code> (2009 breach).</td></tr>
+    <tr><td>Format</td><td>Which hash algorithm John should assume, e.g. <code>raw-md5</code>, <code>nt</code>, <code>sha512crypt</code>.</td></tr>
+  </table>
+  <p>On the AttackBox / Kali it's pre-installed — check with <code>john</code> (look for
+    <code>1.9.0-jumbo-1</code>). rockyou lives at <code>/usr/share/wordlists/rockyou.txt</code>.</p>
+
+  <h2>Basic syntax</h2>
+  <pre>john [options] [file path]</pre>
+  <table class="data">
+    <tr><th>Form</th><th>What it does</th></tr>
+    <tr><td><code>john --wordlist=&lt;list&gt; &lt;file&gt;</code></td><td>Wordlist mode, John auto-detects the format.</td></tr>
+    <tr><td><code>john --format=&lt;fmt&gt; --wordlist=&lt;list&gt; &lt;file&gt;</code></td><td>Force a specific format when auto-detect misfires.</td></tr>
+    <tr><td><code>john --show &lt;file&gt;</code></td><td>Re-print already-cracked results (stored in <code>~/.john/john.pot</code>).</td></tr>
+  </table>
+  <p class="id-note"><strong>Format prefix trap:</strong> for a plain hash you usually prefix
+    <code>raw-</code> (e.g. <code>raw-md5</code>). Check with
+    <code>john --list=formats | grep -iF "md5"</code>.</p>
+
+  <h3>Identifying a hash first</h3>
+  <p>If auto-detect fails, identify the type, then set <code>--format</code>. Use an online identifier or
+    the Python <code>hash-identifier</code> tool (<code>hash-id.py</code>):</p>
+  <pre>wget https://gitlab.com/kalilinux/packages/hash-identifier/-/raw/kali/master/hash-id.py
+python3 hash-id.py</pre>
+  <p>Feed it a hash and it lists probable formats — try them top-down.</p>
+
+  <h2>Task 4 — Cracking basic hashes</h2>
+  <p>Four raw hashes. Identify each by length/charset, then crack. Files are in
+    <code>~/John-the-Ripper-The-Basics/Task04/</code>. In the terminal below they're loaded as
+    <code>md5.txt</code>, <code>sha1.txt</code>, <code>sha256.txt</code>, <code>whirlpool.txt</code>.</p>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>File</th><th>Length</th><th>Type</th><th>John format</th><th>Command</th></tr>
+    <tr><td>hash1</td><td>32 hex</td><td>MD5</td><td><code>raw-md5</code></td><td><code>john --format=raw-md5 --wordlist=…/rockyou.txt hash1.txt</code></td></tr>
+    <tr><td>hash2</td><td>40 hex</td><td>SHA-1</td><td><code>raw-sha1</code></td><td><code>john --format=raw-sha1 --wordlist=…/rockyou.txt hash2.txt</code></td></tr>
+    <tr><td>hash3</td><td>64 hex</td><td>SHA-256</td><td><code>raw-sha256</code></td><td><code>john --format=raw-sha256 --wordlist=…/rockyou.txt hash3.txt</code></td></tr>
+    <tr><td>hash4</td><td>128 hex</td><td>Whirlpool</td><td><code>whirlpool</code></td><td><code>john --format=whirlpool --wordlist=…/rockyou.txt hash4.txt</code></td></tr>
+  </table>
+  </div>
+  <details class="quiz-hint"><summary>Show cracked answers (Task 4)</summary>
+  <div>
+    <p><strong>hash1</strong> (MD5) → <code>biscuit</code></p>
+    <p><strong>hash2</strong> (SHA-1) → <code>kangeroo</code></p>
+    <p><strong>hash3</strong> (SHA-256) → <code>microphone</code></p>
+    <p><strong>hash4</strong> (Whirlpool) → crack on the VM with <code>--format=whirlpool</code>
+       (the offline sim here can't do Whirlpool).</p>
+  </div>
+  </details>
+
+  <h2>Task 5 — Windows NTLM / NThash</h2>
+  <p>NThash (loosely "NTLM") is how modern Windows stores passwords in the <strong>SAM</strong> database,
+    or in Active Directory's <code>NTDS.dit</code>. You'd dump it with a tool like Mimikatz. Sometimes you
+    "pass the hash" instead of cracking — but weak policies make cracking viable.</p>
+  <pre>john --format=nt --wordlist=/usr/share/wordlists/rockyou.txt ntlm.txt</pre>
+  <details class="quiz-hint"><summary>Show cracked answer (Task 5)</summary>
+  <div><p><code>ntlm.txt</code> (<code>--format=nt</code>) → <code>mushroom</code></p></div>
+  </details>
+
+  <h2>Task 6 — /etc/shadow with unshadow</h2>
+  <p>Linux hashes live in <code>/etc/shadow</code> (root-only). John needs it combined with
+    <code>/etc/passwd</code> — that's what <code>unshadow</code> does:</p>
+  <pre>unshadow local_passwd local_shadow &gt; unshadowed.txt
+john --wordlist=/usr/share/wordlists/rockyou.txt unshadowed.txt
+# if needed:  --format=sha512crypt</pre>
+  <p>You can use whole files or just the relevant line from each. The root line here is a
+    <code>$6$</code> hash → <strong>sha512crypt</strong>. Crack it on the VM (salted, so not in the
+    offline sim). Files in <code>~/John-the-Ripper-The-Basics/Task06/</code>.</p>
+
+  <h2>Task 7 — Single crack mode &amp; word mangling</h2>
+  <p>Instead of a wordlist, <code>--single</code> derives guesses from the <strong>username</strong> by
+    mangling it: <code>Markus</code> → <code>Markus1</code>, <code>MArkus</code>, <code>Markus!</code>…
+    It also reads the <strong>GECOS</strong> field (full name, etc.) from passwd/shadow entries.</p>
+  <p>The file must be in <code>username:hash</code> form so John knows the base word:</p>
+  <pre># file joker.txt:  joker:7bf6d9bb82bed1302f331fc6b816aada
+john --single --format=raw-md5 joker.txt</pre>
+  <details class="quiz-hint"><summary>Show cracked answer (Task 7)</summary>
+  <div><p>User <code>joker</code> → <code>Jok3r</code> (single-crack mangles "joker").</p></div>
+  </details>
+
+  <h2>Task 8 — Custom rules</h2>
+  <p>Password policies push users into predictable patterns: capital first, number + symbol at the end —
+    <code>Polopassword1!</code>. Custom rules in <code>john.conf</code>
+    (<code>/opt/john/john.conf</code> on the AttackBox) mutate a wordlist to match that shape.</p>
+  <pre>[List.Rules:PoloPassword]
+cAz"[0-9] [!$%@]"</pre>
+  <table class="data">
+    <tr><th>Token</th><th>Effect</th></tr>
+    <tr><td><code>c</code></td><td>Capitalise the first letter.</td></tr>
+    <tr><td><code>Az"…"</code></td><td>Append the characters/sets that follow.</td></tr>
+    <tr><td><code>A0"…"</code></td><td>Prepend the characters/sets that follow.</td></tr>
+    <tr><td><code>[0-9]</code></td><td>Any digit; <code>[A-Z]</code> upper, <code>[a-z]</code> lower, <code>[!$%@]</code> those symbols.</td></tr>
+  </table>
+  <p>So <code>polopassword</code> → <code>Polopassword1!</code>. Invoke it with:</p>
+  <pre>john --wordlist=/usr/share/wordlists/rockyou.txt --rule=PoloPassword hash.txt</pre>
+  <p class="id-note">Stuck? Jumbo John ships tons of rules — peek around line 678 of <code>john.conf</code>.</p>
+
+  <h2>Tasks 9–11 — Archives &amp; SSH keys (the *2john tools)</h2>
+  <p>The pattern is always the same: a helper converts the file into a hash John understands, then you
+    crack it with a normal wordlist run.</p>
+  <div class="tbl-scroll">
+  <table class="data">
+    <tr><th>Target</th><th>Convert</th><th>Crack</th></tr>
+    <tr><td>Zip (Task 9)</td><td><code>zip2john secure.zip &gt; zip_hash.txt</code></td><td><code>john --wordlist=…/rockyou.txt zip_hash.txt</code></td></tr>
+    <tr><td>RAR (Task 10)</td><td><code>rar2john secure.rar &gt; rar_hash.txt</code></td><td><code>john --wordlist=…/rockyou.txt rar_hash.txt</code></td></tr>
+    <tr><td>SSH key (Task 11)</td><td><code>ssh2john id_rsa &gt; ssh_hash.txt</code></td><td><code>john --wordlist=…/rockyou.txt ssh_hash.txt</code></td></tr>
+  </table>
+  </div>
+  <p class="id-note">No <code>ssh2john</code> binary? Use <code>python3 /opt/john/ssh2john.py</code>
+    (AttackBox) or <code>python /usr/share/john/ssh2john.py</code> (Kali). These need the real files +
+    rockyou — do them on the lab VM.</p>
+
+  <h2>Try it — simulated John</h2>
+  <p>The room's raw + NTLM + single-crack hashes are loaded. Try <code>cat md5.txt</code>, then
+    <code>john md5.txt</code>, <code>john ntlm.txt</code>, or
+    <code>john --single --format=raw-md5 joker.txt</code>.</p>
+  <div id="term"></div>
+  <p class="id-note">Salted (<code>$6$</code>), Whirlpool and archive hashes intentionally won't crack
+    here — those are VM practicals.</p>
+
+  <h2>Practice</h2>
+  <div id="quiz"></div>
+
+  <div class="pagenav">
+    <a href="mistakes-tactics.html">← Cheatsheet</a>
+    <a href="../index.html">Back to home →</a>
+  </div>
+</div>
+
+<footer class="site">All crypto runs client-side · cracking is simulated.</footer>
+
+<script src="../vendor/crypto-js.min.js"></script>
+<script src="../js/hashlib.js"></script>
+<script src="../js/terminal.js"></script>
+<script src="../js/quiz.js"></script>
+<script>
+  Terminal.mount(document.getElementById("term"));
+  Quiz.mount(document.getElementById("quiz"), "t8", [
+    { type:"text", q:"What is the most popular extended version of John the Ripper?",
+      answer:["jumbo john","jumbo"], hint:"…John — extends the core with more formats.",
+      explain:"Jumbo John — it also ships zip2john/rar2john/ssh2john/unshadow." },
+    { type:"text", q:"Which website's breach was the rockyou.txt wordlist created from?",
+      answer:["rockyou.com","rockyou"], hint:"Same name as the wordlist, a 2009 breach.",
+      explain:"rockyou.com, breached in 2009." },
+    { type:"text", q:"Crack hash1 (MD5). Run <code>john md5.txt</code> in the terminal. Password?",
+      answer:["biscuit"], hint:"32 hex → raw-md5.", explain:"biscuit." },
+    { type:"text", q:"Crack hash3 (SHA-256). Password?",
+      answer:["microphone"], hint:"64 hex → raw-sha256.", explain:"microphone." },
+    { type:"text", q:"Crack the NTLM hash (<code>john ntlm.txt</code>). Password?",
+      answer:["mushroom"], hint:"--format=nt.", explain:"mushroom." },
+    { type:"text", q:"Crack the single-crack hash for user <code>joker</code>. Password?",
+      answer:["Jok3r"], hint:"john --single, file must be joker:hash.", explain:"Jok3r." },
+    { type:"mcq", q:"Which tool combines /etc/passwd and /etc/shadow for John?",
+      choices:["unshadow","zip2john","hash-id.py","--single"], answer:"unshadow",
+      explain:"unshadow local_passwd local_shadow > unshadowed.txt" },
+    { type:"mcq", q:"Which flag enables mangling the username into guesses?",
+      choices:["--wordlist","--single","--format","--rule"], answer:"--single",
+      explain:"--single = single crack mode (word mangling from the username/GECOS)." },
+    { type:"mcq", q:"You have secure.zip. Which converts it to a John hash?",
+      choices:["ssh2john","rar2john","zip2john","unshadow"], answer:"zip2john",
+      explain:"zip2john secure.zip > zip_hash.txt, then crack with a wordlist." },
+    { type:"text", q:"To force John to treat a plain MD5 hash as MD5, what --format value do you pass?",
+      answer:["raw-md5","raw md5"], hint:"Plain hashes get a raw- prefix.",
+      explain:"--format=raw-md5." }
+  ]);
+</script>

@@ -16,6 +16,7 @@
       <a href="pages/5-cracking-lab.html">5 · Cracking</a>
       <a href="pages/6-integrity-hmac.html">6 · Integrity</a>
       <a href="pages/7-encoding.html">7 · Encoding</a>
+      <a href="pages/8-john-the-ripper.html">8 · John</a>
       <a href="pages/mistakes-tactics.html">Cheatsheet</a>
     </nav>
   </div>
@@ -25,9 +26,10 @@
   <section class="hero">
     <span class="tag">Interactive · runs fully in your browser</span>
     <h1>Hashing Basics — the hands-on version</h1>
-    <p class="lead">Every concept from the TryHackMe Hashing Basics room, re-explained simply,
-      plus a real hashing terminal, live tools, cracking labs, and lots of practice questions.
-      Nothing is faked except the crackers — all hashes are computed for real in your browser.</p>
+    <p class="lead">Every concept from the TryHackMe Hashing Basics <em>and</em> John the Ripper rooms,
+      re-explained simply, plus a real hashing terminal, live tools, cracking labs, and lots of
+      practice questions. Nothing is faked except the crackers — all hashes are computed for real
+      in your browser.</p>
     <div class="pill-row">
       <span class="pill">No install</span>
       <span class="pill">No server</span>
@@ -79,6 +81,11 @@
       <p>The three get confused constantly. Base64 demo included.</p>
       <span class="mini" data-prog="t7"></span>
     </a>
+    <a class="card" href="pages/8-john-the-ripper.html">
+      <span class="num">08</span><h3>John the Ripper</h3>
+      <p>The whole THM room: NTLM, <code>/etc/shadow</code>, single crack, custom rules, zip/rar/ssh.</p>
+      <span class="mini" data-prog="t8"></span>
+    </a>
     <a class="card" href="pages/mistakes-tactics.html">
       <span class="num">★</span><h3>Mistakes &amp; tactics</h3>
       <p>Common traps, a problem-solving cheatsheet, and external tools.</p>
@@ -108,7 +115,7 @@
 <script>
   Terminal.mount(document.getElementById("term"));
   // aggregate progress across topics
-  var TOPICS = [["t1",6],["t2",5],["t3",6],["t4",6],["t5",5],["t6",5],["t7",5],["tmix",6]];
+  var TOPICS = [["t1",6],["t2",5],["t3",6],["t4",6],["t5",5],["t6",5],["t7",5],["t8",10],["tmix",6]];
   var got=0,total=0;
   TOPICS.forEach(function(t){ var p=Quiz.progress(t[0],t[1]); got+=p.got; total+=t[1];
     var el=document.querySelector("[data-prog='"+t[0]+"']");

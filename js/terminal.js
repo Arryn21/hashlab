@@ -14,7 +14,14 @@
     "hash1.txt": "$2a$06$7yoU3Ng8dHTXphAg913cyO6Bjs3K5lBnwq5FJyA6d01pMSrddr1ZG\n",
     "hash2.txt": "9eb7ee7f551d2f0ac684981bd1f1e2fa4a37590199636753efe614d4db30e8e1\n",
     "hash3.txt": "$6$GQXVvW4EuM$ehD6jWiMsfNorxy5SINsgdlxmAEl3.yif0/c3NqzGLa0P.S7KRDYjycw5bnYkF5ZtB8wQy8KnskuWQS3Yr1wQ0\n",
-    "hash4.txt": "b6b0d451bbf6fed658659a9e7e5598fe\n"
+    "hash4.txt": "b6b0d451bbf6fed658659a9e7e5598fe\n",
+    // --- John the Ripper room files (Task 4–7) ---
+    "md5.txt": "2e728dd31fb5949bc39cac5a9f066498\n",
+    "sha1.txt": "1a732667f3917c0f4aa98bb13011b9090c6f8065\n",
+    "sha256.txt": "d7f4d3ccee7acd3dd7fad3ac2be2aae9c44f4e9b7fb802d73136d4c53920140a\n",
+    "whirlpool.txt": "c5a60cc6bbba781c601c5402755ae1044bbf45b78d1183cbf2ca1c865b6c792cf3c6b87791344986c8a832a0f9ca8d0b4afd3d9421a149d57075e1b4e93f90bf\n",
+    "ntlm.txt": "5460c85bd858a11475115d2dd3a82333\n",
+    "joker.txt": "joker:7bf6d9bb82bed1302f331fc6b816aada\n"
   };
 
   // Known cracked results for the simulated crackers (hash -> plaintext).
@@ -23,7 +30,13 @@
     "9eb7ee7f551d2f0ac684981bd1f1e2fa4a37590199636753efe614d4db30e8e1": "halloween",
     "$6$GQXVvW4EuM$ehD6jWiMsfNorxy5SINsgdlxmAEl3.yif0/c3NqzGLa0P.S7KRDYjycw5bnYkF5ZtB8wQy8KnskuWQS3Yr1wQ0": "spaceman",
     "b6b0d451bbf6fed658659a9e7e5598fe": "funforyou",
-    "5b31f93c09ad1d065c0491b764d04933": "tryhackme"
+    "5b31f93c09ad1d065c0491b764d04933": "tryhackme",
+    // --- John room verified plaintexts (all hex keys lowercase) ---
+    "2e728dd31fb5949bc39cac5a9f066498": "biscuit",       // Task4 hash1 MD5
+    "1a732667f3917c0f4aa98bb13011b9090c6f8065": "kangeroo", // Task4 hash2 SHA1
+    "d7f4d3ccee7acd3dd7fad3ac2be2aae9c44f4e9b7fb802d73136d4c53920140a": "microphone", // Task4 hash3 SHA256
+    "5460c85bd858a11475115d2dd3a82333": "mushroom",      // Task5 NTLM
+    "7bf6d9bb82bed1302f331fc6b816aada": "Jok3r"          // Task7 single-crack (user joker)
   };
 
   var HELP = [
@@ -128,12 +141,23 @@
     }
   }
 
+  // Pull the crackable hash out of a file's contents.
+  // Handles single-crack "username:hash" lines and normalises hex case.
+  function extractHash(raw) {
+    var v = raw.trim();
+    if (v.indexOf(":") !== -1) v = v.split(":").pop().trim();  // drop user: prefix
+    return v;
+  }
+  function lookupCracked(hash) {
+    return CRACKED[hash] || CRACKED[hash.toLowerCase()] || null;
+  }
+
   function findHashInArgs(t, line) {
     // hashcat -m X -a 0 <file-or-hash> <wordlist>
     // pick first token that is a known file or a known hash
     for (var i = 1; i < t.length; i++) {
-      if (FS[t[i]] !== undefined) return FS[t[i]].trim();
-      if (CRACKED[t[i]]) return t[i];
+      if (FS[t[i]] !== undefined) return extractHash(FS[t[i]]);
+      if (lookupCracked(t[i])) return t[i];
     }
     return null;
   }
@@ -145,7 +169,7 @@
     var header = "hashcat (simulated) — mode " + mode + ", attack 0 (straight)\n" +
                  "Dictionary: rockyou.txt\n";
     if (!hash) return header + "\nNo recognised hash/file in arguments. This demo only cracks the room hashes.";
-    var pw = CRACKED[hash];
+    var pw = lookupCracked(hash);
     if (!pw) return header + "\nStatus: Exhausted — not found in this offline demo wordlist.";
     return header +
       "\n" + hash + ":" + pw +
@@ -157,14 +181,29 @@
   }
 
   function johnSim(t) {
-    var f = t[1];
-    var data = FS[f];
-    if (data === undefined) return "john: no such file: " + (f||"");
-    var hash = data.trim();
-    var pw = CRACKED[hash];
-    if (!pw) return "john (simulated): could not crack this hash in the offline demo.";
-    return "john (simulated)\nLoaded 1 password hash\n" + pw + "  (?)\n" +
-           "1 password cracked. Use: john --wordlist=/usr/share/wordlists/rockyou.txt " + f;
+    // find the file argument (skip flags like --single, --format=, --wordlist=)
+    var f = null;
+    for (var i = 1; i < t.length; i++) {
+      if (t[i].charAt(0) === "-") continue;
+      if (FS[t[i]] !== undefined) { f = t[i]; break; }
+    }
+    if (!f) {
+      // maybe user typed a filename that doesn't exist
+      var named = t.slice(1).filter(function (x) { return x.charAt(0) !== "-"; });
+      if (named.length) return "john: no such file: " + named[0];
+      return "john: no input file given";
+    }
+    var single = t.indexOf("--single") !== -1;
+    var hash = extractHash(FS[f]);
+    var pw = lookupCracked(hash);
+    var mode = single ? "single crack" : "wordlist";
+    if (!pw) return "john (simulated) — " + mode + " mode\nLoaded 1 password hash\n" +
+      "No password cracked in this offline demo.\n" +
+      "This hash is salted or archive-based — crack it on the lab VM/AttackBox with the real rockyou.txt.";
+    return "john (simulated) — " + mode + " mode\nLoaded 1 password hash\n" +
+           pw + "  (" + f.replace(/\.txt$/, "") + ")\n" +
+           "1 password cracked. Real command: john " +
+           (single ? "--single " : "--wordlist=/usr/share/wordlists/rockyou.txt ") + f;
   }
 
   // ---- DOM wiring ----
